@@ -1,0 +1,100 @@
+version: '3.7'
+services:
+    technologeek-blog-mysql:
+        image: mysql:8
+        ports:
+            - "3309:3306"
+        restart: always
+        networks: 
+            - technologeek-blog
+        environment: 
+            - MYSQL_DATABASE
+            - MYSQL_ROOT_PASSWORD
+    technologeek-config:
+        image: technologeek-config:v1
+        ports:
+            - "8891:8891"
+        restart: always
+        networks:
+            - technologeek-blog
+        environment:
+            - CONFIG_USER
+            - CONFIG_PASSWORD
+    blog-eureka-server:
+        image: blog-eureka-server:v1
+        ports:
+            - "8762:8762"
+        restart: always
+        networks:
+            - technologeek-blog
+        depends_on:
+            - technologeek-config
+        environment:
+            - EUREKA_PORT
+    blog-data-access:
+        image: blog-data-access:v1
+        restart: always
+        networks:
+            - technologeek-blog
+        depends_on:
+            - technologeek-config
+            - blog-eureka-server
+        environment:
+            - DB_HOST
+            - DB_PORT
+            - DB_NAME
+            - DB_USER
+            - DB_PASS
+            - EUREKA_PORT
+    blog-service:
+        image: blog-service:v1
+        networks:
+            - technologeek-blog
+        restart: always
+        depends_on:
+            - technologeek-config
+            - blog-data-access
+        environment:
+            - EUREKA_PORT
+    user-service:
+        image: user-service:v1
+        networks:
+            - technologeek-blog
+        restart: always
+        depends_on:
+            - technologeek-config
+            - blog-data-access
+        environment: 
+            - EUREKA_PORT
+    oauth-server:
+        image: blog-oauth-server:v1
+        networks:
+            - technologeek-blog
+        restart: always
+        depends_on: 
+            - technologeek-config
+            - blog-data-access
+            - user-service
+        environment: 
+            - OAUTH_JWT_KEY
+            - OAUTH_CLIENT_ID
+            - OAUTH_CLIENT_SECRET
+            - EUREKA_PORT
+    blog-zuul-server:
+        image: blog-zuul-server:v1
+        ports:
+            - "8889:8889"
+        networks: 
+            - technologeek-blog
+        restart: always
+        depends_on: 
+            - technologeek-config
+            - blog-data-access
+            - blog-service
+            - user-service
+            - oauth-server
+        environment: 
+            - EUREKA_PORT
+            - OAUTH_JWT_KEY
+networks:
+    technologeek-blog:
